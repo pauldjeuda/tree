@@ -1,7 +1,20 @@
-import rateLimit from 'express-rate-limit';
+import { createRequire } from 'node:module';
+import type { RequestHandler } from 'express';
 import { RelationsError } from '../services/relations.service.js';
 
 const standardResponse = (message: string) => ({ error: { code: 'RATE_LIMITED', message } });
+
+type RateLimitOptions = {
+  windowMs: number;
+  limit: number;
+  standardHeaders: boolean;
+  legacyHeaders: boolean;
+  message: { error: { code: string; message: string } };
+};
+
+const rateLimit = createRequire(import.meta.url)('express-rate-limit') as (
+  options: RateLimitOptions,
+) => RequestHandler;
 
 export function makeLimiter(windowMs: number, max: number, message: string) {
   return rateLimit({
