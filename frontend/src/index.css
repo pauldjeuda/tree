@@ -1,0 +1,76 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@layer base {
+  body {
+    @apply bg-[#F7F7F7] text-ink font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Smooth transitions */
+  * {
+    border-color: #E8E8E8;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4D4D4;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A3A3A3;
+}
+
+/* 3D tilt perspective for Highlight Card */
+.perspective-card {
+  perspective: 900px;
+}
+.tilt-card {
+  transform: rotateY(-10deg) rotateX(3deg);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.tilt-card:hover {
+  transform: rotateY(-6deg) rotateX(2deg) translateY(-4px);
+  box-shadow: 0 35px 70px rgba(0, 0, 0, 0.28);
+}
+
+/* Radial page gradient as specified in Section 0 */
+.bg-page-radial {
+  background: radial-gradient(circle at center, #FFFFFF 0%, #F7F7F7 100%);
+}
+
+/* Dot grid for canvas */
+.canvas-dots {
+  background-color: #F2F4F3;
+  background-image: radial-gradient(#D9DDDB 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Accessibilité : focus clavier visible */
+:focus-visible {
+  outline: 2px solid #111111;
+  outline-offset: 2px;
+}
+
+/* Accessibilité : respecter « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tilt-card:hover {
+    transform: rotateY(-10deg) rotateX(3deg);
+  }
+}

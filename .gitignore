@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.env
+*.log
+.DS_Store
+
+# Bases SQLite de développement et photos envoyées
+backend/data/
+backend/uploads/*
+!backend/uploads/.gitkeep

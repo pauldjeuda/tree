@@ -1,0 +1,50 @@
+{
+  "name": "tree-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate:prod": "node dist/db/migrate.js",
+    "db:seed": "tsx src/db/seeders/run.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.9.8",
+    "nanoid": "^5.0.7",
+    "sequelize": "^6.37.8",
+    "sharp": "^0.35.5",
+    "umzug": "^3.8.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^22.20.5",
+    "@types/supertest": "^6.0.2",
+    "@vitest/coverage-v8": "^5.0.3",
+    "sqlite3": "^6.0.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "dist/server.js",
+  "allowScripts": {
+    "sqlite3@6.0.1": true
+  }
+}

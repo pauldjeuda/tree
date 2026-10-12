@@ -1,0 +1,43 @@
+# Rendu par l'image nginx officielle : ${BACKEND_URL} est remplacé au démarrage du conteneur.
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # Photos : 5 Mo maximum côté API, on laisse une marge pour l'enveloppe multipart
+  client_max_body_size 6m;
+
+  gzip on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+
+  # API (et photos, servies sous /api/v1/uploads) : relayées vers le backend.
+  # X-Forwarded-For permet à l'API de limiter le débit par visiteur réel (TRUST_PROXY=1).
+  location /api/ {
+    proxy_pass ${BACKEND_URL};
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+  }
+
+  # Fichiers du build : noms hachés, donc cache d'un an
+  location /assets/ {
+    try_files $uri =404;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    add_header X-Content-Type-Options "nosniff" always;
+  }
+
+  # Application monopage : toute autre adresse renvoie index.html (routes React : /e/..., /f/...)
+  location / {
+    try_files $uri $uri/ /index.html;
+    add_header Cache-Control "no-cache";
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  }
+}

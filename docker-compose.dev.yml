@@ -1,0 +1,20 @@
+# Développement : uniquement MySQL (le backend et le frontend tournent sur votre machine).
+#   docker compose -f docker-compose.dev.yml up -d
+# puis dans backend/.env : DB_DIALECT=mysql  DB_HOST=127.0.0.1  DB_NAME=tree_db  DB_USER=tree_user  DB_PASSWORD=tree_password
+services:
+  db:
+    image: mysql:8.4
+    container_name: tree-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tree_db
+      MYSQL_USER: tree_user
+      MYSQL_PASSWORD: tree_password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - '3306:3306'
+    command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+    volumes:
+      - mysql_data:/var/lib/mysql
+volumes:
+  mysql_data:

@@ -1,0 +1,188 @@
+name: CI/CD — qualité, tests et livraison
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Qualité statique et dépendances
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Installer les dépendances backend
+        run: npm ci --prefix backend
+      - name: Installer les dépendances frontend
+        run: npm ci --prefix frontend
+      - name: Vérifier les copies du code partagé
+        run: npm run check:shared
+      - name: Vérifier les types TypeScript
+        run: npm run typecheck
+      - name: Auditer les dépendances backend
+        run: npm --prefix backend audit --omit=dev --audit-level=high
+      - name: Auditer les dépendances frontend
+        run: npm --prefix frontend audit --omit=dev --audit-level=high
+
+  tests:
+    name: Tests ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: backend — unitaires et intégration API
+            project: backend
+          - label: frontend — unitaires
+            project: frontend
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Installer les dépendances
+        run: npm ci --prefix ${{ matrix.project }}
+      - name: Exécuter les tests avec couverture
+        run: npm --prefix ${{ matrix.project }} test -- --coverage
+      - name: Publier le rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: couverture-${{ matrix.project }}
+          path: ${{ matrix.project }}/coverage
+          if-no-files-found: ignore
+          retention-days: 14
+
+  codeql:
+    name: Analyse statique CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Initialiser CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: Analyser le code
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript
+
+  build:
+    name: Compilation de production
+    runs-on: ubuntu-latest
+    needs: [quality, tests, codeql]
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Installer les dépendances backend
+        run: npm ci --prefix backend
+      - name: Installer les dépendances frontend
+        run: npm ci --prefix frontend
+      - name: Construire les deux applications
+        run: npm run build
+      - name: Livrer les builds de production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: tree-production-${{ github.sha }}
+          path: |
+            backend/dist
+            frontend/dist
+          if-no-files-found: error
+          retention-days: 14
+
+  integration:
+    name: Smoke test de bout en bout
+    runs-on: ubuntu-latest
+    needs: [quality, tests, build]
+    env:
+      NODE_ENV: development
+      DB_DIALECT: sqlite
+      DB_STORAGE: ${{ runner.temp }}/tree-integration.sqlite
+      UPLOAD_DIR: ${{ runner.temp }}/tree-integration-uploads
+      CORS_ORIGIN: http://localhost:5173
+      PUBLIC_APP_URL: http://localhost:5173
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Installer les dépendances backend
+        run: npm ci --prefix backend
+      - name: Installer les dépendances frontend
+        run: npm ci --prefix frontend
+      - name: Lancer le site et l’API puis vérifier le parcours complet
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev > "$RUNNER_TEMP/tree-ci.log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:4000/api/v1/health >/dev/null &&
+               curl --fail --silent http://localhost:5173/ >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != true ]; then
+            cat "$RUNNER_TEMP/tree-ci.log"
+            exit 1
+          fi
+
+          if ! node scripts/smoke.mjs http://localhost:5173; then
+            cat "$RUNNER_TEMP/tree-ci.log"
+            exit 1
+          fi
