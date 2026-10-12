@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
+import * as helmet from 'helmet';
 import { env } from './config/env.js';
 import { generalLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -24,7 +24,7 @@ export function createApp(options: CreateAppOptions = {}) {
   // (un seul quota pour tous les utilisateurs).
   app.set('trust proxy', options.trustProxy ?? env.TRUST_PROXY);
 
-  app.use(helmet());
+  app.use(helmet.default());
 
   // Liste blanche stricte : seules les origines configurées reçoivent les en-têtes CORS.
   // Aucun cookie n'est utilisé (le jeton passe par l'en-tête Authorization), donc pas de credentials.
