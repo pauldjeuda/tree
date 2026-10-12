@@ -136,8 +136,6 @@ jobs:
     env:
       NODE_ENV: development
       DB_DIALECT: sqlite
-      DB_STORAGE: ${{ runner.temp }}/tree-integration.sqlite
-      UPLOAD_DIR: ${{ runner.temp }}/tree-integration-uploads
       CORS_ORIGIN: http://localhost:5173
       PUBLIC_APP_URL: http://localhost:5173
     steps:
@@ -159,6 +157,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export DB_STORAGE="$RUNNER_TEMP/tree-integration.sqlite"
+          export UPLOAD_DIR="$RUNNER_TEMP/tree-integration-uploads"
           npm run dev > "$RUNNER_TEMP/tree-ci.log" 2>&1 &
           server_pid=$!
           cleanup() {
