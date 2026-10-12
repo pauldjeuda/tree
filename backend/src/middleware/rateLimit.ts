@@ -1,4 +1,4 @@
-import { createRequire } from 'node:module';
+import rateLimitModule from 'express-rate-limit';
 import type { RequestHandler } from 'express';
 import { RelationsError } from '../services/relations.service.js';
 
@@ -12,9 +12,9 @@ type RateLimitOptions = {
   message: { error: { code: string; message: string } };
 };
 
-const rateLimit = createRequire(import.meta.url)('express-rate-limit') as (
-  options: RateLimitOptions,
-) => RequestHandler;
+// Le type conditionnel de ce module est résolu comme namespace par le build NodeNext de Vercel,
+// alors que son export runtime par défaut est bien la fabrique de middleware.
+const rateLimit = rateLimitModule as unknown as (options: RateLimitOptions) => RequestHandler;
 
 export function makeLimiter(windowMs: number, max: number, message: string) {
   return rateLimit({

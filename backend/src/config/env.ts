@@ -27,6 +27,8 @@ const envSchema = z.object({
   PUBLIC_API_URL: z.string().default(''),
   UPLOAD_DIR: z.string().default('./uploads'),
   BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+  /** Identifiant du store Blob, présent quand le projet utilise l'authentification OIDC Vercel. */
+  BLOB_STORE_ID: z.string().min(1).optional(),
   /** Nombre de proxys de confiance devant l'API (0 en local, 1 derrière nginx ou un PaaS). */
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   /** Applique les migrations en attente au démarrage (pratique en développement). */
@@ -71,8 +73,8 @@ if (env.NODE_ENV === 'production') {
   if (env.DB_DIALECT === 'mysql' && (!process.env.DB_PASSWORD || process.env.DB_PASSWORD === 'tree_password')) {
     problems.push('DB_PASSWORD doit être défini avec un mot de passe fort (pas la valeur par défaut).');
   }
-  if (process.env.VERCEL === '1' && !env.BLOB_READ_WRITE_TOKEN) {
-    problems.push('BLOB_READ_WRITE_TOKEN doit être défini sur Vercel pour stocker les photos durablement.');
+  if (process.env.VERCEL === '1' && !env.BLOB_READ_WRITE_TOKEN && !env.BLOB_STORE_ID) {
+    problems.push('BLOB_STORE_ID ou BLOB_READ_WRITE_TOKEN doit être défini sur Vercel pour stocker les photos durablement.');
   }
   if (problems.length) {
     console.error('[Config] Configuration de production incomplète :\n - ' + problems.join('\n - '));

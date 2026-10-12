@@ -20,16 +20,29 @@ function isPublicBlobUrl(value: string): boolean {
 export class StorageService {
   private readonly uploadDir: string;
   private readonly blobToken?: string;
+  private readonly blobStoreId?: string;
 
-  constructor(uploadDir: string = env.UPLOAD_DIR_ABS, blobToken: string | undefined = env.BLOB_READ_WRITE_TOKEN) {
+  constructor(
+    uploadDir: string = env.UPLOAD_DIR_ABS,
+    blobToken: string | undefined = env.BLOB_READ_WRITE_TOKEN,
+    blobStoreId: string | undefined = env.BLOB_STORE_ID,
+  ) {
     this.uploadDir = uploadDir;
     this.blobToken = blobToken;
+    this.blobStoreId = blobStoreId;
     // Les fonctions serverless n'ont pas de disque persistant : ne crée pas ./uploads dans ce mode.
-    if (!this.blobToken) fs.mkdirSync(this.uploadDir, { recursive: true });
+    if (!this.usesBlob) fs.mkdirSync(this.uploadDir, { recursive: true });
   }
 
   public get usesBlob(): boolean {
-    return Boolean(this.blobToken);
+    // Les projets Vercel connectés au store utilisent un token OIDC éphémère fourni au runtime.
+    return Boolean(this.blobToken || (this.blobStoreId && process.env.VERCEL === '1'));
+  }
+
+  private get blobAuthOptions(): { token?: string; storeId?: string } {
+    if (this.blobToken) return { token: this.blobToken };
+    if (this.blobStoreId) return { storeId: this.blobStoreId };
+    return {};
   }
 
   public get directory(): string {
@@ -39,13 +52,13 @@ export class StorageService {
   /** Retourne le nom local ou l'URL durable de l'objet Blob. */
   public async saveFile(filename: string, buffer: Buffer): Promise<string> {
     if (!PHOTO_NAME.test(filename)) throw new Error('Nom de fichier photo invalide');
-    if (this.blobToken) {
+    if (this.usesBlob) {
       const blob = await put('photos/' + filename, buffer, {
         access: 'public',
         contentType: 'image/webp',
         addRandomSuffix: false,
         cacheControlMaxAge: 31_536_000,
-        token: this.blobToken,
+        ...this.blobAuthOptions,
       });
       return blob.url;
     }
@@ -58,9 +71,9 @@ export class StorageService {
   public async deleteFile(filename: string | null | undefined): Promise<void> {
     if (!filename) return;
     if (isPublicBlobUrl(filename)) {
-      if (!this.blobToken) return;
+      if (!this.usesBlob) return;
       try {
-        await del(filename, { token: this.blobToken });
+        await del(filename, this.blobAuthOptions);
       } catch (err) {
         // La référence a déjà été retirée de la base : une erreur de ménage ne doit pas annuler la réponse.
         console.error('Erreur lors de la suppression de la photo Blob :', err);

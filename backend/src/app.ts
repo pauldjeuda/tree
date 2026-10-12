@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { createRequire } from 'node:module';
+import helmetModule from 'helmet';
 import type { RequestHandler } from 'express';
 import { env } from './config/env.js';
+import './db/models/index.js';
 import { generalLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { familiesRoutes } from './modules/families/families.routes.js';
@@ -12,7 +13,8 @@ import { publicRoutes } from './modules/public/public.routes.js';
 import { storageService } from './services/storage.service.js';
 import { sequelize } from './db/index.js';
 
-const helmet = createRequire(import.meta.url)('helmet') as () => RequestHandler;
+// Import direct pour que le traceur de dépendances Vercel embarque le middleware.
+const helmet = helmetModule as unknown as () => RequestHandler;
 
 export interface CreateAppOptions {
   corsOrigins?: string[];
@@ -82,3 +84,4 @@ export function createApp(options: CreateAppOptions = {}) {
 }
 
 export const app = createApp();
+export default app;

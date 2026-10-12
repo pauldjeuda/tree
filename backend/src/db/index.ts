@@ -1,4 +1,5 @@
 import { Sequelize } from 'sequelize';
+import mysql2 from 'mysql2';
 import { env } from '../config/env.js';
 import fs from 'fs';
 import path from 'path';
@@ -10,6 +11,8 @@ if (env.DB_DIALECT === 'mysql') {
     host: env.DB_HOST,
     port: env.DB_PORT,
     dialect: 'mysql',
+    // Référence explicite pour que le traceur de dépendances Vercel embarque le pilote.
+    dialectModule: mysql2,
     logging: false,
     timezone: '+00:00',
     dialectOptions: {
