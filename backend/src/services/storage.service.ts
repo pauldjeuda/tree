@@ -1,34 +1,76 @@
 import fs from 'fs';
 import path from 'path';
+import { del, put } from '@vercel/blob';
 import { env } from '../config/env.js';
 
-/** Les photos sont enregistrées sous un nom aléatoire de 32 caractères hexadécimaux. */
 const PHOTO_NAME = /^[a-f0-9]{32}\.webp$/;
+const BLOB_PATH = /^\/photos\/[a-f0-9]{32}\.webp$/;
+
+function isPublicBlobUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' &&
+      url.hostname.endsWith('.public.blob.vercel-storage.com') &&
+      BLOB_PATH.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
 
 export class StorageService {
-  private uploadDir: string;
+  private readonly uploadDir: string;
+  private readonly blobToken?: string;
 
-  constructor(uploadDir: string = env.UPLOAD_DIR_ABS) {
+  constructor(uploadDir: string = env.UPLOAD_DIR_ABS, blobToken: string | undefined = env.BLOB_READ_WRITE_TOKEN) {
     this.uploadDir = uploadDir;
-    fs.mkdirSync(this.uploadDir, { recursive: true });
+    this.blobToken = blobToken;
+    // Les fonctions serverless n'ont pas de disque persistant : ne crée pas ./uploads dans ce mode.
+    if (!this.blobToken) fs.mkdirSync(this.uploadDir, { recursive: true });
+  }
+
+  public get usesBlob(): boolean {
+    return Boolean(this.blobToken);
   }
 
   public get directory(): string {
     return this.uploadDir;
   }
 
+  /** Retourne le nom local ou l'URL durable de l'objet Blob. */
   public async saveFile(filename: string, buffer: Buffer): Promise<string> {
     if (!PHOTO_NAME.test(filename)) throw new Error('Nom de fichier photo invalide');
+    if (this.blobToken) {
+      const blob = await put('photos/' + filename, buffer, {
+        access: 'public',
+        contentType: 'image/webp',
+        addRandomSuffix: false,
+        cacheControlMaxAge: 31_536_000,
+        token: this.blobToken,
+      });
+      return blob.url;
+    }
+
     await fs.promises.writeFile(path.join(this.uploadDir, filename), buffer, { flag: 'wx' });
     return filename;
   }
 
-  /** Supprime une photo ; ignore tout ce qui n'est pas un nom de fichier généré par l'application. */
+  /** Supprime uniquement un fichier local généré ou une URL de Blob reconnue. */
   public async deleteFile(filename: string | null | undefined): Promise<void> {
-    if (!filename || !PHOTO_NAME.test(filename)) return;
+    if (!filename) return;
+    if (isPublicBlobUrl(filename)) {
+      if (!this.blobToken) return;
+      try {
+        await del(filename, { token: this.blobToken });
+      } catch (err) {
+        // La référence a déjà été retirée de la base : une erreur de ménage ne doit pas annuler la réponse.
+        console.error('Erreur lors de la suppression de la photo Blob :', err);
+      }
+      return;
+    }
+    if (!PHOTO_NAME.test(filename)) return;
+
     const filePath = path.join(this.uploadDir, filename);
     const retryDelaysMs = [25, 50, 100];
-
     for (let attempt = 0; ; attempt++) {
       try {
         await fs.promises.unlink(filePath);
@@ -36,21 +78,22 @@ export class StorageService {
       } catch (err) {
         const code = (err as NodeJS.ErrnoException).code;
         if (code === 'ENOENT') return;
-
         if ((code === 'EBUSY' || code === 'EPERM') && attempt < retryDelaysMs.length) {
           await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
           continue;
         }
-
         console.error('Erreur lors de la suppression du fichier :', err);
         return;
       }
     }
   }
-  /** URL publique d'une photo (absolue si PUBLIC_API_URL est défini, relative sinon). */
+
+  /** Retourne l'URL Blob stockée ou l'URL API pour une photo locale historique. */
   public getPublicUrl(filename: string | null | undefined): string | null {
-    if (!filename || !PHOTO_NAME.test(filename)) return null;
-    return `${env.PUBLIC_API_URL}/api/v1/uploads/${filename}`;
+    if (!filename) return null;
+    if (isPublicBlobUrl(filename)) return filename;
+    if (!PHOTO_NAME.test(filename)) return null;
+    return env.PUBLIC_API_URL + '/api/v1/uploads/' + filename;
   }
 }
 

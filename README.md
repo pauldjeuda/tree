@@ -64,6 +64,20 @@ Pour le HTTPS, placez un proxy (Caddy, Traefik, Cloudflare, load balancer de l'h
 
 Puis : `node scripts/smoke.mjs https://tree.exemple.com --api https://api.exemple.com/api/v1`
 
+### Option C — Vercel pour le site et l'API
+
+Vercel peut déployer le frontend Vite et l'API Express du même dépôt comme deux projets, avec `frontend/` puis `backend/` comme dossiers racines. L'API fonctionne comme une fonction Node.js : elle ne doit pas écrire ses données sur le disque local.
+
+1. Créez une base MySQL accessible depuis Vercel. Le backend prend déjà en charge MySQL ; utilisez une connexion TLS si le fournisseur l'exige.
+2. Dans le projet Vercel `backend`, créez un stockage Blob **public** et associez-le à ce projet. Les images sont ensuite accessibles par leur URL Blob.
+3. Créez les projets Vercel en choisissant les dossiers racines `frontend` et `backend`. L'API est exposée par `src/index.ts`.
+4. Dans les variables de production du frontend, définissez `VITE_API_URL=https://<api>/api/v1`.
+5. Dans les variables de production du backend, définissez `NODE_ENV=production`, `DB_DIALECT=mysql`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL=true`, `DB_POOL_MAX=3`, `BLOB_READ_WRITE_TOKEN`, `CORS_ORIGIN=<url-du-site>`, `PUBLIC_APP_URL=<url-du-site>`, `PUBLIC_API_URL=<url-de-l-api>`, `TRUST_PROXY=1` et `AUTO_MIGRATE=false`.
+6. Ajoutez les secrets GitHub `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_FRONTEND_PROJECT_ID`, `VERCEL_BACKEND_PROJECT_ID`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` et `DB_PASSWORD`. Ajoutez les variables `VERCEL_DEPLOY_ENABLED=true`, `PUBLIC_APP_URL` et `PUBLIC_API_URL`. Le job de déploiement reste ignoré tant que `VERCEL_DEPLOY_ENABLED` n'est pas activé.
+7. La migration MySQL et le déploiement de production s'exécutent après les tests, CodeQL, le build et le smoke test de la CI. Désactivez les déploiements de production Git automatiques dans Vercel pour que la CI reste le passage obligatoire.
+
+Les URL du Blob public sont accessibles à toute personne qui les connaît. Les liens partagés de l'application peuvent afficher les photos comme aujourd'hui. Les bases SQLite et dossiers `backend/data/` / `backend/uploads/` locaux ne sont pas transférés automatiquement : migrez-les séparément si vous voulez conserver des arbres existants.
+
 ### Vérifier un déploiement
 
 `scripts/smoke.mjs` contrôle, avec un message précis à chaque échec : le site et ses routes, la présence de la bonne `VITE_API_URL` dans le site construit, l'API et la base, CORS, la création d'une famille, l'authentification, l'envoi et l'affichage d'une photo, le lien de partage et sa désactivation. Il crée une famille « Smoke test » (sans donnée sensible).
@@ -85,10 +99,10 @@ Puis : `node scripts/smoke.mjs https://tree.exemple.com --api https://api.exempl
 
 À chaque push et pull request vers main ou master, la pipeline vérifie la cohérence du code partagé, les types TypeScript et les dépendances runtime, exécute CodeQL, lance les tests unitaires et d’intégration API avec rapports de couverture, puis construit le backend et le frontend.
 
-Un smoke test démarre le site et l’API avec une base SQLite temporaire et vérifie le parcours complet : création de famille, authentification, relations, envoi de photo et partage révocable. Sur un push vers main, les builds de production sont publiés comme artefact GitHub Actions prêt à être récupéré pour le déploiement.
+Un smoke test démarre le site et l’API avec une base SQLite temporaire et vérifie le parcours complet : création de famille, authentification, relations, envoi de photo et partage révocable. Sur un push vers main, les builds de production sont publiés comme artefact GitHub Actions. Après configuration des variables et secrets décrits dans l'option Vercel, un job déploie l'API et le site seulement après le succès des contrôles CI.
 ## Variables d'environnement
 
-**Backend** (`backend/.env`, modèle dans `backend/.env.example`) : `NODE_ENV`, `PORT`, `DB_DIALECT` (`sqlite` ou `mysql`), `DB_*`, `CORS_ORIGIN` (origines autorisées, séparées par des virgules), `PUBLIC_APP_URL`, `PUBLIC_API_URL`, `UPLOAD_DIR`, `TRUST_PROXY`, `AUTO_MIGRATE` (vrai par défaut hors production).
+**Backend** (`backend/.env`, modèle dans `backend/.env.example`) : `NODE_ENV`, `PORT`, `DB_DIALECT` (`sqlite` ou `mysql`), `DB_*`, `DB_SSL`, `DB_POOL_MAX`, `CORS_ORIGIN` (origines autorisées, séparées par des virgules), `PUBLIC_APP_URL`, `PUBLIC_API_URL`, `UPLOAD_DIR`, `BLOB_READ_WRITE_TOKEN`, `TRUST_PROXY`, `AUTO_MIGRATE` (vrai par défaut hors production).
 
 **Frontend** (`frontend/.env`) : `VITE_API_URL` (par défaut `/api/v1`), `VITE_DEV_API_TARGET` (développement seulement).
 

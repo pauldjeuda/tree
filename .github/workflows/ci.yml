@@ -186,3 +186,62 @@ jobs:
             cat "$RUNNER_TEMP/tree-ci.log"
             exit 1
           fi
+  deploy:
+    name: Déploiement Vercel en production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
+    needs: [quality, tests, codeql, build, integration]
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Appliquer les migrations MySQL
+        run: |
+          npm ci --prefix backend
+          npm run build --prefix backend
+          npm --prefix backend run db:migrate:prod
+        env:
+          NODE_ENV: production
+          DB_DIALECT: mysql
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_SSL: ${{ vars.DB_SSL || 'true' }}
+          DB_POOL_MAX: '3'
+          AUTO_MIGRATE: 'false'
+          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
+          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+          CORS_ORIGIN: ${{ vars.PUBLIC_APP_URL }}
+      - name: Installer la CLI Vercel
+        run: npm install --global vercel@latest
+      - name: Construire et publier l'API
+        working-directory: backend
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      - name: Construire et publier le site
+        working-directory: frontend
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      - name: Vérifier les URL de production
+        env:
+          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
+          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+        run: |
+          curl --fail --retry 20 --retry-delay 3 --retry-connrefused "$PUBLIC_APP_URL/"
+          curl --fail --retry 20 --retry-delay 3 --retry-connrefused "$PUBLIC_API_URL/api/v1/health"

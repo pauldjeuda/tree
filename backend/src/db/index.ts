@@ -12,9 +12,12 @@ if (env.DB_DIALECT === 'mysql') {
     dialect: 'mysql',
     logging: false,
     timezone: '+00:00',
-    dialectOptions: { charset: 'utf8mb4' },
+    dialectOptions: {
+      charset: 'utf8mb4',
+      ...(env.DB_SSL ? { ssl: { require: true, rejectUnauthorized: true } } : {}),
+    },
     pool: {
-      max: 10,
+      max: env.DB_POOL_MAX,
       min: 0,
       acquire: 30000,
       idle: 10000,

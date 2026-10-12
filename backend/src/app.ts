@@ -39,18 +39,20 @@ export function createApp(options: CreateAppOptions = {}) {
 
   // Photos : noms aléatoires, donc cache long et immuable. Servies avant le limiteur général,
   // car une seule page d'arbre charge de nombreuses images.
-  app.use(
-    '/api/v1/uploads',
-    express.static(storageService.directory, {
-      index: false,
-      dotfiles: 'deny',
-      maxAge: '365d',
-      immutable: true,
-      setHeaders: (res) => {
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // export PNG depuis un autre domaine
-      },
-    }),
-  );
+  if (!storageService.usesBlob) {
+    app.use(
+      '/api/v1/uploads',
+      express.static(storageService.directory, {
+        index: false,
+        dotfiles: 'deny',
+        maxAge: '365d',
+        immutable: true,
+        setHeaders: (res) => {
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // export PNG depuis un autre domaine
+        },
+      }),
+    );
+  }
 
   app.use(generalLimiter);
   app.use(express.json({ limit: '100kb' }));

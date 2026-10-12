@@ -69,10 +69,10 @@ export class PersonsController {
       // Process image
       const processedBuffer = await imagesService.processAvatar(file.buffer);
       const filename = `${crypto.randomBytes(16).toString('hex')}.webp`;
-      await storageService.saveFile(filename, processedBuffer);
+      const photoReference = await storageService.saveFile(filename, processedBuffer);
 
       const previous = person.photo_path;
-      person.photo_path = filename; // seul le nom du fichier est stocké
+      person.photo_path = photoReference; // nom local ou URL durable Vercel Blob
       await person.save();
       await storageService.deleteFile(previous);
 

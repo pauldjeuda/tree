@@ -80,7 +80,7 @@ Person.init(
       allowNull: true,
     },
     photo_path: {
-      type: DataTypes.STRING(120),
+      type: DataTypes.STRING(512),
       allowNull: true,
     },
     parent_union_id: {

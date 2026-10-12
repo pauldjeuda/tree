@@ -52,8 +52,8 @@ export async function up(qi: QueryInterface): Promise<void> {
     death_date: { type: DataTypes.STRING(10), allowNull: true },
     is_deceased: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     role_label: { type: DataTypes.STRING(40), allowNull: true },
-    /** Nom du fichier photo (jamais une URL ni un chemin). */
-    photo_path: { type: DataTypes.STRING(120), allowNull: true },
+    /** Nom local ou URL publique Vercel Blob. */
+    photo_path: { type: DataTypes.STRING(512), allowNull: true },
     parent_union_id: {
       type: DataTypes.UUID,
       allowNull: true,

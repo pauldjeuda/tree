@@ -97,14 +97,14 @@ export async function seedMballaFamily() {
     const created = snapshot.persons.find((p) => !knownIds.has(p.id))!;
     ids.set(m.key, created.id);
 
-    // Avatar illustré → WebP 512 × 512 enregistré comme une vraie photo (nom de fichier seul en base).
+    // Avatar illustré → WebP 512 × 512 enregistré localement ou dans Blob selon la configuration.
     const webp = await sharp(Buffer.from(avatarSvg(m.firstName, m.gender, m.age)))
       .resize(512, 512)
       .webp({ quality: 85 })
       .toBuffer();
     const filename = `${crypto.randomBytes(16).toString('hex')}.webp`;
-    await storageService.saveFile(filename, webp);
-    await Person.update({ photo_path: filename }, { where: { id: created.id } });
+    const photoReference = await storageService.saveFile(filename, webp);
+    await Person.update({ photo_path: photoReference }, { where: { id: created.id } });
   }
 
   console.log(`[Seeder] Famille Mballa créée (${MEMBERS.length} membres).`);
