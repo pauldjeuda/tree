@@ -66,7 +66,7 @@ Puis : `node scripts/smoke.mjs https://tree.exemple.com --api https://api.exempl
 
 ### Option C — Vercel pour le site et l'API
 
-Vercel peut déployer le frontend Vite et l'API Express du même dépôt comme deux projets, avec `frontend/` puis `backend/` comme dossiers racines. L'API fonctionne comme une fonction Node.js : elle ne doit pas écrire ses données sur le disque local.
+Vercel peut déployer le frontend Vite et l'API Express du même dépôt comme deux projets, avec `frontend/` puis `backend/` comme dossiers racines. L'API fonctionne comme une fonction Node.js : elle ne doit pas écrire ses données sur le disque local. Les fonctions Vercel limitent le corps d'une requête à 4,5 Mo ; l'application limite donc les photos à 4 Mo pour garder une marge pour le multipart.
 
 1. Créez une base MySQL accessible depuis Vercel. Le backend prend déjà en charge MySQL ; utilisez une connexion TLS si le fournisseur l'exige.
 2. Dans le projet Vercel `backend`, créez un stockage Blob **public** et associez-le à ce projet. Les images sont ensuite accessibles par leur URL Blob.
@@ -128,7 +128,7 @@ Les routes d'édition exigent `Authorization: Bearer {jeton}`. Erreurs : `{ "err
 | `GET` / `PATCH /families/:id` | lit ou renomme |
 | `POST /families/:id/persons` | ajoute une personne (+ `relation`) → snapshot |
 | `PATCH` / `DELETE /families/:id/persons/:personId` | modifie / supprime (les enfants restent) |
-| `POST` / `DELETE /families/:id/persons/:personId/photo` | photo JPG, PNG ou WebP, 5 Mo max |
+| `POST` / `DELETE /families/:id/persons/:personId/photo` | photo JPG, PNG ou WebP, 4 Mo max |
 | `POST` / `PATCH /families/:id/share` | crée le lien s'il n'existe pas, puis renvoie son état ; `PATCH` l'active ou le désactive → `{ shareId, url, active }` |
 | `GET /public/f/:shareId` | lecture seule (404 inconnu, 410 désactivé) |
 | `GET /uploads/:fichier` | photos (cache long) |

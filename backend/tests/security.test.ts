@@ -249,7 +249,7 @@ describe('Sécurité et robustesse de l’API', () => {
       const huge = await request(app)
         .post(`/api/v1/families/${familyId}/persons/${rootId}/photo`)
         .set(auth())
-        .attach('photo', Buffer.alloc(5 * 1024 * 1024 + 10, 1), { filename: 'big.png', contentType: 'image/png' });
+        .attach('photo', Buffer.alloc(4 * 1024 * 1024 + 10, 1), { filename: 'big.png', contentType: 'image/png' });
       expect(huge.status).toBe(413);
       expect(huge.body.error.code).toBe('FILE_TOO_LARGE');
     });

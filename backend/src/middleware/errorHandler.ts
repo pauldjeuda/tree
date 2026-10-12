@@ -31,7 +31,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   if (err instanceof multer.MulterError) {
     return err.code === 'LIMIT_FILE_SIZE'
-      ? send(res, 413, 'FILE_TOO_LARGE', 'La photo dépasse 5 Mo. Choisissez une image plus légère.')
+      ? send(res, 413, 'FILE_TOO_LARGE', 'La photo dépasse 4 Mo. Choisissez une image plus légère.')
       : send(res, 422, 'VALIDATION_ERROR', 'Envoi de fichier invalide : utilisez le champ « photo ».');
   }
 

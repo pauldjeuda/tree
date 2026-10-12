@@ -6,6 +6,7 @@ import {
   CreatePersonSchema,
   Gender,
   RelationType,
+  MAX_PHOTO_BYTES,
   TreeSnapshot,
 } from '../../shared/index.js';
 import { useTreeStore } from '../../store/useTreeStore.js';
@@ -131,8 +132,8 @@ export const PersonForm: React.FC<PersonFormProps> = ({ snapshot }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('La photo ne doit pas dépasser 5 Mo');
+    if (file.size > MAX_PHOTO_BYTES) {
+      setErrorMessage('La photo ne doit pas dépasser 4 Mo');
       return;
     }
 
@@ -283,7 +284,7 @@ export const PersonForm: React.FC<PersonFormProps> = ({ snapshot }) => {
           <p className="text-[12px] font-sans font-medium text-ink leading-tight">
             Photo <span className="text-discreet font-normal text-[11px]">(facultatif)</span>
           </p>
-          <p className="text-[11px] text-discreet leading-tight">JPG ou PNG, 5 Mo max</p>
+          <p className="text-[11px] text-discreet leading-tight">JPG, PNG ou WebP, 4 Mo max</p>
           {previewPhoto && (
             <button
               type="button"

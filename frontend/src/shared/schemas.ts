@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 /** Nombre maximal de personnes par famille. */
 export const MAX_PERSONS = 500;
-/** Taille maximale d'une photo envoyée (octets). */
-export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+/** Taille maximale d'une photo envoyée (octets), avec marge sous la limite de 4,5 Mo des fonctions Vercel. */
+export const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 
 export const GenderSchema = z.enum(['M', 'F'], {
   errorMap: () => ({ message: 'Choisissez le sexe.' }),

@@ -6,7 +6,7 @@ server {
   root /usr/share/nginx/html;
   index index.html;
 
-  # Photos : 5 Mo maximum côté API, on laisse une marge pour l'enveloppe multipart
+  # Photos : 4 Mo maximum côté API, on laisse une marge sous la limite Vercel de 4,5 Mo
   client_max_body_size 6m;
 
   gzip on;
