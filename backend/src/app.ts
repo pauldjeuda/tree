@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import * as helmet from 'helmet';
+import { createRequire } from 'node:module';
+import type { RequestHandler } from 'express';
 import { env } from './config/env.js';
 import { generalLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -10,6 +11,8 @@ import { shareRoutes } from './modules/share/share.routes.js';
 import { publicRoutes } from './modules/public/public.routes.js';
 import { storageService } from './services/storage.service.js';
 import { sequelize } from './db/index.js';
+
+const helmet = createRequire(import.meta.url)('helmet') as () => RequestHandler;
 
 export interface CreateAppOptions {
   corsOrigins?: string[];
@@ -24,7 +27,7 @@ export function createApp(options: CreateAppOptions = {}) {
   // (un seul quota pour tous les utilisateurs).
   app.set('trust proxy', options.trustProxy ?? env.TRUST_PROXY);
 
-  app.use(helmet.default());
+  app.use(helmet());
 
   // Liste blanche stricte : seules les origines configurées reçoivent les en-têtes CORS.
   // Aucun cookie n'est utilisé (le jeton passe par l'en-tête Authorization), donc pas de credentials.
